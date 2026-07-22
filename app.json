@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "whishlist",
-    "slug": "whishlist",
+    "name": "wishlist",
+    "slug": "wishlist",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "whishlist",
+    "scheme": "wishlist",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
