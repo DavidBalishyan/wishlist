@@ -1,5 +1,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { useCurrency } from "../context/CurrencyContext";
+import { CURRENCY_OPTIONS } from "../currency";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -11,10 +13,43 @@ const THEME_OPTIONS: { value: ThemeOption; label: string }[] = [
 
 export default function SettingsScreen() {
   const { theme, setTheme } = useTheme();
+  const { currency, setCurrency } = useCurrency();
 
   return (
     <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-950">
       <View className="px-4 pt-4">
+        <View className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+          <Text className="text-xs font-medium text-gray-400 uppercase tracking-wide px-4 pt-3 pb-2">
+            Currency
+          </Text>
+
+          {CURRENCY_OPTIONS.map((option, index) => (
+            <TouchableOpacity
+              key={option.code}
+              className={`flex-row items-center justify-between px-4 py-3 ${
+                index < CURRENCY_OPTIONS.length - 1
+                  ? "border-b border-gray-100 dark:border-gray-700"
+                  : ""
+              }`}
+              onPress={() => setCurrency(option.code)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: currency === option.code }}
+            >
+              <View className="flex-row items-center">
+                <Text className="text-[15px] text-gray-900 dark:text-white">
+                  {option.label}
+                </Text>
+                <Text className="text-[13px] text-gray-400 ml-2">
+                  {option.symbol} · {option.code}
+                </Text>
+              </View>
+              {currency === option.code ? (
+                <Text className="text-gray-900 dark:text-white text-sm">✓</Text>
+              ) : null}
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
           <Text className="text-xs font-medium text-gray-400 uppercase tracking-wide px-4 pt-3 pb-2">
             Theme

@@ -3,15 +3,20 @@ import {
   Modal,
   View,
   Text,
+  Alert,
   TextInput,
   TouchableOpacity,
   ScrollView,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { WishInput, Priority } from "../types";
+import { Wish, WishInput, Priority } from "../types";
+import { useCurrency } from "../context/CurrencyContext";
+import { getCurrencyOption } from "../currency";
+import { findWishWithDuplicateLink } from "../links";
 
 interface Props {
   visible: boolean;
@@ -19,6 +24,7 @@ interface Props {
   onSave: (input: WishInput) => void;
   onDelete?: () => void;
   initial?: WishInput & { id?: string };
+  existingWishes?: Pick<Wish, "id" | "title" | "link">[];
   title?: string;
 }
 
@@ -30,13 +36,29 @@ const PRIORITY_STYLES: Record<Priority, { active: string; inactive: string }> = 
   high: { active: "bg-red-500", inactive: "border border-red-500/30" },
 };
 
-export default function WishModal({ visible, onClose, onSave, onDelete, initial, title }: Props) {
+interface DuplicateWarning {
+  wishTitle: string;
+  input: WishInput;
+}
+
+export default function WishModal({
+  visible,
+  onClose,
+  onSave,
+  onDelete,
+  initial,
+  existingWishes = [],
+  title,
+}: Props) {
+  const { currency } = useCurrency();
+  const currencyOption = getCurrencyOption(currency);
   const [wishTitle, setWishTitle] = useState(initial?.title ?? "");
   const [price, setPrice] = useState(initial?.price ?? "");
   const [imageUri, setImageUri] = useState(initial?.imageUri ?? "");
   const [link, setLink] = useState(initial?.link ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -46,6 +68,7 @@ export default function WishModal({ visible, onClose, onSave, onDelete, initial,
       setLink(initial?.link ?? "");
       setNotes(initial?.notes ?? "");
       setPriority(initial?.priority ?? "medium");
+      setDuplicateWarning(null);
     }
   }, [visible, initial]);
 
@@ -65,25 +88,65 @@ export default function WishModal({ visible, onClose, onSave, onDelete, initial,
 
   const handleSave = () => {
     if (!wishTitle.trim()) return;
-    onSave({
+
+    const input: WishInput = {
       title: wishTitle.trim(),
       price: price.trim(),
       imageUri,
       link: link.trim(),
       notes: notes.trim(),
       priority,
-    });
+    };
+    const duplicateWish = findWishWithDuplicateLink(existingWishes, input.link, initial?.id);
+
+    if (duplicateWish) {
+      if (Platform.OS !== "web") {
+        Keyboard.dismiss();
+        Alert.alert(
+          "Duplicate link",
+          `“${duplicateWish.title}” already uses this link. Do you want to save it anyway?`,
+          [
+            { text: "Go back", style: "cancel" },
+            {
+              text: "Save anyway",
+              onPress: () => {
+                onSave(input);
+                onClose();
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      setDuplicateWarning({
+        wishTitle: duplicateWish.title,
+        input,
+      });
+      return;
+    }
+
+    onSave(input);
     onClose();
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-end bg-black/30"
       >
-        <View className="bg-white dark:bg-gray-900 rounded-t-xl max-h-[85%]">
-          <ScrollView contentContainerClassName="px-4 pt-3 pb-8">
+        <View className="bg-white dark:bg-gray-900 rounded-t-xl max-h-[85%] overflow-hidden">
+          <ScrollView
+            contentContainerClassName="px-4 pt-3 pb-8"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          >
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-lg font-semibold text-gray-900 dark:text-white">
                 {title ?? "New Wish"}
@@ -124,13 +187,13 @@ export default function WishModal({ visible, onClose, onSave, onDelete, initial,
             />
 
             <Text className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 mt-3">
-              Price
+              Price ({currency})
             </Text>
             <TextInput
               className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 text-[15px] text-gray-900 dark:text-white"
               value={price}
               onChangeText={setPrice}
-              placeholder="$0.00"
+              placeholder={`${currencyOption.symbol}0.00`}
               placeholderTextColor="#999"
               keyboardType="decimal-pad"
             />
@@ -208,6 +271,49 @@ export default function WishModal({ visible, onClose, onSave, onDelete, initial,
               </Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {duplicateWarning ? (
+            <View
+              className="absolute inset-0 bg-black/40 items-center justify-center px-6"
+              accessibilityViewIsModal
+            >
+              <View
+                className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-xl p-5"
+                accessibilityRole="alert"
+              >
+                <Text className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+                  Duplicate link
+                </Text>
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                  “{duplicateWarning.wishTitle}” already uses this link. Do you want to save it
+                  anyway?
+                </Text>
+
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    className="flex-1 py-3 rounded-lg border border-gray-200 dark:border-gray-700 items-center"
+                    onPress={() => setDuplicateWarning(null)}
+                  >
+                    <Text className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      Go back
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    className="flex-1 py-3 rounded-lg bg-gray-900 dark:bg-white items-center"
+                    onPress={() => {
+                      onSave(duplicateWarning.input);
+                      setDuplicateWarning(null);
+                      onClose();
+                    }}
+                  >
+                    <Text className="text-sm font-medium text-white dark:text-gray-900">
+                      Save anyway
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>

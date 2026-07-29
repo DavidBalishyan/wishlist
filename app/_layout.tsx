@@ -2,6 +2,7 @@ import "../global.css";
 import { Tabs } from "expo-router";
 import { WishProvider } from "../context/WishContext";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { CurrencyProvider } from "../context/CurrencyContext";
 
 function TabLayout() {
   const { isDark } = useTheme();
@@ -62,9 +63,11 @@ function TabLayout() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <WishProvider>
-        <TabLayout />
-      </WishProvider>
+      <CurrencyProvider>
+        <WishProvider>
+          <TabLayout />
+        </WishProvider>
+      </CurrencyProvider>
     </ThemeProvider>
   );
 }

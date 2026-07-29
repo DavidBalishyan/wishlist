@@ -83,6 +83,7 @@ export default function WishlistScreen() {
         onSave={handleSave}
         onDelete={editingWish ? handleDelete : undefined}
         initial={editingWish ?? undefined}
+        existingWishes={wishes}
         title={editingWish ? "Edit" : "New wish"}
       />
     </View>

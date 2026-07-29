@@ -3,6 +3,8 @@ import { Checkbox } from "expo-checkbox";
 import * as WebBrowser from "expo-web-browser";
 import Animated, { Layout } from "react-native-reanimated";
 import { Wish, Priority } from "../types";
+import { useCurrency } from "../context/CurrencyContext";
+import { formatPrice } from "../currency";
 
 interface Props {
   wish: Wish;
@@ -17,6 +19,8 @@ const PRIORITY_DOT: Record<Priority, string> = {
 };
 
 export default function WishItem({ wish, onToggleComplete, onPress }: Props) {
+  const { currency } = useCurrency();
+
   const openLink = async () => {
     if (wish.link) {
       await WebBrowser.openBrowserAsync(wish.link);
@@ -69,7 +73,7 @@ export default function WishItem({ wish, onToggleComplete, onPress }: Props) {
 
           {wish.price ? (
             <Text className="text-sm font-medium text-gray-900 dark:text-white ml-3">
-              {wish.price}
+              {formatPrice(wish.price, currency)}
             </Text>
           ) : null}
         </View>
